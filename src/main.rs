@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_mod_picking::*;
 
 mod board;
 use board::*;
@@ -17,6 +18,9 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
+        .init_resource::<PickingCamera>()
+        .add_plugin(PickingPlugin)
+        .add_plugin(InteractablePickingPlugin)
         .add_plugin(BoardPlugin)
         .add_plugin(PiecesPlugin)
         .add_startup_system(setup.system())
@@ -33,6 +37,7 @@ fn setup(mut commands: Commands) {
             )),
             ..Default::default()
         })
+        .insert_bundle(PickingCameraBundle::default())
         // Light
         .commands()
         .spawn_bundle(LightBundle {
