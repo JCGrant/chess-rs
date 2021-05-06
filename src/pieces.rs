@@ -187,10 +187,23 @@ fn create_pieces(
     }
 }
 
+fn move_pieces(time: Res<Time>, mut query: Query<(&mut Transform, &Piece)>) {
+    for (mut transform, piece) in query.iter_mut() {
+        let direction =
+            Vec3::new(piece.square.x as f32, 0., piece.square.y as f32) - transform.translation;
+        let piece_speed = 5.0;
+        if direction.length() > 0.01 {
+            transform.translation +=
+                piece_speed * direction.length() * direction.normalize() * time.delta_seconds();
+        }
+    }
+}
+
 pub struct PiecesPlugin;
 
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(create_pieces.system());
+        app.add_startup_system(create_pieces.system())
+            .add_system(move_pieces.system());
     }
 }
