@@ -1,12 +1,30 @@
-use std::{f32::consts::PI, vec};
+use std::{collections::HashMap, f32::consts::FRAC_PI_2, vec};
 
 use bevy::prelude::*;
 
-#[derive(Clone)]
-struct Piece {
-    meshes: Vec<Handle<Mesh>>,
-    material: Handle<StandardMaterial>,
-    transform: Transform,
+use crate::board::*;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum PieceType {
+    King,
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    Pawn,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum PieceColor {
+    White,
+    Black,
+}
+
+#[derive(Clone, Copy)]
+pub struct Piece {
+    kind: PieceType,
+    color: PieceColor,
+    pub square: Square,
 }
 
 fn create_pieces(
@@ -25,118 +43,120 @@ fn create_pieces(
     let queen_handle: Handle<Mesh> = asset_server.load("pieces.glb#Mesh7/Primitive0");
 
     // Setup initial mesh translations
-    let king_meshes = vec![king_handle, king_cross_handle];
-    let knight_meshes = vec![knight_1_handle, knight_2_handle];
-    let queen_meshes = vec![queen_handle];
-    let bishop_meshes = vec![bishop_handle];
-    let rook_meshes = vec![rook_handle];
-    let pawn_meshes = vec![pawn_handle];
+    let mut kind_to_meshes = HashMap::new();
+    kind_to_meshes.insert(PieceType::King, vec![king_handle, king_cross_handle]);
+    kind_to_meshes.insert(PieceType::Queen, vec![queen_handle]);
+    kind_to_meshes.insert(PieceType::Rook, vec![rook_handle]);
+    kind_to_meshes.insert(PieceType::Bishop, vec![bishop_handle]);
+    kind_to_meshes.insert(PieceType::Knight, vec![knight_1_handle, knight_2_handle]);
+    kind_to_meshes.insert(PieceType::Pawn, vec![pawn_handle]);
 
     // Add some materials
-    let white_material = materials.add(Color::rgb(1., 0.8, 0.8).into());
-    let black_material = materials.add(Color::rgb(0., 0.2, 0.2).into());
+    let mut color_to_material = HashMap::new();
+    color_to_material.insert(
+        PieceColor::White,
+        materials.add(Color::rgb(1., 0.8, 0.8).into()),
+    );
+    color_to_material.insert(
+        PieceColor::Black,
+        materials.add(Color::rgb(0., 0.2, 0.2).into()),
+    );
 
     let mut pieces = vec![
         // White back row
         Piece {
-            meshes: rook_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 0.)),
+            kind: PieceType::Rook,
+            color: PieceColor::White,
+            square: Square { x: 0, y: 7 },
         },
         Piece {
-            meshes: knight_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 1.)),
+            kind: PieceType::Knight,
+            color: PieceColor::White,
+            square: Square { x: 1, y: 7 },
         },
         Piece {
-            meshes: bishop_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 2.)),
+            kind: PieceType::Bishop,
+            color: PieceColor::White,
+            square: Square { x: 2, y: 7 },
         },
         Piece {
-            meshes: queen_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 3.)),
+            kind: PieceType::Queen,
+            color: PieceColor::White,
+            square: Square { x: 3, y: 7 },
         },
         Piece {
-            meshes: king_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 4.)),
+            kind: PieceType::King,
+            color: PieceColor::White,
+            square: Square { x: 4, y: 7 },
         },
         Piece {
-            meshes: bishop_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 5.)),
+            kind: PieceType::Bishop,
+            color: PieceColor::White,
+            square: Square { x: 5, y: 7 },
         },
         Piece {
-            meshes: knight_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 6.)),
+            kind: PieceType::Knight,
+            color: PieceColor::White,
+            square: Square { x: 6, y: 7 },
         },
         Piece {
-            meshes: rook_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(0., 0., 7.)),
+            kind: PieceType::Rook,
+            color: PieceColor::White,
+            square: Square { x: 7, y: 7 },
         },
         // Black back row
         Piece {
-            meshes: rook_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 0.)),
+            kind: PieceType::Rook,
+            color: PieceColor::Black,
+            square: Square { x: 0, y: 0 },
         },
         Piece {
-            meshes: knight_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_matrix(Mat4::from_rotation_translation(
-                Quat::from_axis_angle(Vec3::new(0., 1., 0.), PI),
-                Vec3::new(7., 0., 1.),
-            )),
+            kind: PieceType::Knight,
+            color: PieceColor::Black,
+            square: Square { x: 1, y: 0 },
         },
         Piece {
-            meshes: bishop_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 2.)),
+            kind: PieceType::Bishop,
+            color: PieceColor::Black,
+            square: Square { x: 2, y: 0 },
         },
         Piece {
-            meshes: queen_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 3.)),
+            kind: PieceType::Queen,
+            color: PieceColor::Black,
+            square: Square { x: 3, y: 0 },
         },
         Piece {
-            meshes: king_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 4.)),
+            kind: PieceType::King,
+            color: PieceColor::Black,
+            square: Square { x: 4, y: 0 },
         },
         Piece {
-            meshes: bishop_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 5.)),
+            kind: PieceType::Bishop,
+            color: PieceColor::Black,
+            square: Square { x: 5, y: 0 },
         },
         Piece {
-            meshes: knight_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_matrix(Mat4::from_rotation_translation(
-                Quat::from_axis_angle(Vec3::new(0., 1., 0.), PI),
-                Vec3::new(7., 0., 6.),
-            )),
+            kind: PieceType::Knight,
+            color: PieceColor::Black,
+            square: Square { x: 6, y: 0 },
         },
         Piece {
-            meshes: rook_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(7., 0., 7.)),
+            kind: PieceType::Rook,
+            color: PieceColor::Black,
+            square: Square { x: 7, y: 0 },
         },
     ];
     // Add white and black pawns
     for i in 0..8 {
         pieces.push(Piece {
-            meshes: pawn_meshes.clone(),
-            material: white_material.clone(),
-            transform: Transform::from_translation(Vec3::new(1., 0., i as f32)),
+            kind: PieceType::Pawn,
+            color: PieceColor::White,
+            square: Square { x: i, y: 6 },
         });
         pieces.push(Piece {
-            meshes: pawn_meshes.clone(),
-            material: black_material.clone(),
-            transform: Transform::from_translation(Vec3::new(6., 0., i as f32)),
+            kind: PieceType::Pawn,
+            color: PieceColor::Black,
+            square: Square { x: i, y: 1 },
         });
     }
 
@@ -144,16 +164,22 @@ fn create_pieces(
         commands
             .spawn_bundle(PbrBundle {
                 transform: Transform {
+                    translation: Vec3::new(piece.square.x as f32, 0., piece.square.y as f32),
+                    rotation: if piece.color == PieceColor::White {
+                        Quat::from_axis_angle(Vec3::new(0., 1., 0.), FRAC_PI_2)
+                    } else {
+                        Quat::from_axis_angle(Vec3::new(0., 1., 0.), -FRAC_PI_2)
+                    },
                     scale: Vec3::new(0.2, 0.2, 0.2),
-                    ..piece.transform
                 },
                 ..Default::default()
             })
+            .insert(piece)
             .with_children(|parent| {
-                for mesh in piece.meshes {
+                for mesh in kind_to_meshes[&piece.kind].clone() {
                     parent.spawn_bundle(PbrBundle {
                         mesh: mesh,
-                        material: piece.material.clone(),
+                        material: color_to_material[&piece.color].clone(),
                         ..Default::default()
                     });
                 }

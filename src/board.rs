@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_mod_picking::*;
 
-struct Square {
+#[derive(Clone, Copy, PartialEq)]
+pub struct Square {
     pub x: u8,
     pub y: u8,
 }
@@ -30,11 +31,11 @@ fn create_board(
                     } else {
                         materials.white_square.clone()
                     },
-                    transform: Transform::from_translation(Vec3::new(i as f32, 0., j as f32)),
+                    transform: Transform::from_translation(Vec3::new(j as f32, 0., i as f32)),
                     ..Default::default()
                 })
                 .insert_bundle(PickableBundle::default())
-                .insert(Square { x: i, y: j });
+                .insert(Square { x: j, y: i });
         }
     }
 }
