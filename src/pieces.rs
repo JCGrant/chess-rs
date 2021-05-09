@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::board::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum PieceType {
+pub enum PieceType {
     King,
     Queen,
     Rook,
@@ -15,16 +15,91 @@ enum PieceType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum PieceColor {
+pub enum PieceColor {
     White,
     Black,
 }
 
 #[derive(Clone, Copy)]
 pub struct Piece {
-    kind: PieceType,
-    color: PieceColor,
+    pub kind: PieceType,
+    pub color: PieceColor,
     pub square: Square,
+}
+
+impl Piece {
+    pub fn is_valid_move(&self, square: Square, pieces: Vec<Piece>) -> bool {
+        if get_piece_at(&pieces, square).map(|p| p.color) == Some(self.color) {
+            return false;
+        }
+        match self.kind {
+            PieceType::King => self.square.chebyshev_distance_to(square) == 1,
+            PieceType::Queen => {
+                (self.square.is_diagonal_to(square) || self.square.is_orthogonal_to(square))
+                    && is_path_free(self.square, square, &pieces)
+            }
+            PieceType::Rook => {
+                self.square.is_orthogonal_to(square) && is_path_free(self.square, square, &pieces)
+            }
+            PieceType::Bishop => {
+                self.square.is_diagonal_to(square) && is_path_free(self.square, square, &pieces)
+            }
+            PieceType::Knight => {
+                let rank_distance = self.square.rank_distance_to(square);
+                let file_distance = self.square.file_distance_to(square);
+                (rank_distance == 2 && file_distance == 1)
+                    || (rank_distance == 1 && file_distance == 2)
+            }
+            PieceType::Pawn => {
+                let opponent_color;
+                let two_square_advance_rank;
+                match self.color {
+                    PieceColor::White => {
+                        if square.y > self.square.y {
+                            return false;
+                        }
+                        opponent_color = PieceColor::Black;
+                        two_square_advance_rank = 6;
+                    }
+                    PieceColor::Black => {
+                        if square.y < self.square.y {
+                            return false;
+                        }
+                        opponent_color = PieceColor::White;
+                        two_square_advance_rank = 1;
+                    }
+                }
+                if self.square.is_on_same_file(square) {
+                    let rank_distance = self.square.rank_distance_to(square);
+                    if rank_distance == 1 {
+                        return get_piece_at(&pieces, square).is_none();
+                    }
+                    if rank_distance == 2 {
+                        return self.square.y == two_square_advance_rank
+                            && get_piece_at(&pieces, square).is_none()
+                            && is_path_free(self.square, square, &pieces);
+                    }
+                }
+                if self.square.is_diagonal_to(square)
+                    && self.square.chebyshev_distance_to(square) == 1
+                {
+                    return get_piece_at(&pieces, square).map(|p| p.color) == Some(opponent_color);
+                }
+                false
+            }
+        }
+    }
+}
+
+fn get_piece_at(pieces: &Vec<Piece>, square: Square) -> Option<&Piece> {
+    pieces.iter().find(|piece| piece.square == square)
+}
+
+fn is_path_free(begin: Square, end: Square, pieces: &Vec<Piece>) -> bool {
+    pieces
+        .iter()
+        .find(|piece| piece.square.is_inbetween(begin, end))
+        .is_none()
 }
 
 fn create_pieces(

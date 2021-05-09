@@ -1,3 +1,5 @@
+use std::cmp::{max, min};
+
 use bevy::prelude::*;
 use bevy_mod_picking::*;
 
@@ -12,6 +14,189 @@ pub struct Square {
 impl Square {
     fn is_white(&self) -> bool {
         (self.x + self.y) % 2 == 1
+    }
+}
+
+impl Square {
+    pub fn is_inbetween(&self, square1: Square, square2: Square) -> bool {
+        let min_x = min(square1.x, square2.x);
+        let max_x = max(square1.x, square2.x);
+        let min_y = min(square1.y, square2.y);
+        let max_y = max(square1.y, square2.y);
+        (square1.is_on_same_rank(square2)
+            && self.is_on_same_rank(square1)
+            && (min_x < self.x && self.x < max_x))
+            || (square1.is_on_same_file(square2)
+                && self.is_on_same_file(square1)
+                && (min_y < self.y && self.y < max_y))
+            || (square1.is_diagonal_to(square2)
+                && self.is_diagonal_to(square1)
+                && (min_x < self.x && self.x < max_x)
+                && (min_y < self.y && self.y < max_y))
+    }
+
+    // https://en.wikipedia.org/wiki/Chebyshev_distance
+    pub fn chebyshev_distance_to(&self, square: Square) -> u8 {
+        max(self.rank_distance_to(square), self.file_distance_to(square)) as u8
+    }
+
+    pub fn is_orthogonal_to(&self, square: Square) -> bool {
+        self.is_on_same_rank(square) || self.is_on_same_file(square)
+    }
+
+    pub fn is_diagonal_to(&self, square: Square) -> bool {
+        self.rank_distance_to(square) == self.file_distance_to(square)
+    }
+
+    pub fn is_on_same_rank(&self, square: Square) -> bool {
+        self.rank_distance_to(square) == 0
+    }
+
+    pub fn is_on_same_file(&self, square: Square) -> bool {
+        self.file_distance_to(square) == 0
+    }
+
+    pub fn rank_distance_to(&self, square: Square) -> u8 {
+        (square.y as i8 - self.y as i8).abs() as u8
+    }
+
+    pub fn file_distance_to(&self, square: Square) -> u8 {
+        (square.x as i8 - self.x as i8).abs() as u8
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::board::*;
+
+    #[test]
+    fn test_is_inbetween() {
+        struct Test {
+            square: Square,
+            square1: Square,
+            square2: Square,
+            result: bool,
+        }
+        let tests = vec![
+            // check all flanking variations
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 0, y: 1 },
+                square2: Square { x: 2, y: 1 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 0, y: 2 },
+                square2: Square { x: 2, y: 0 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 1, y: 2 },
+                square2: Square { x: 1, y: 0 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 2, y: 2 },
+                square2: Square { x: 0, y: 0 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 2, y: 1 },
+                square2: Square { x: 0, y: 1 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 2, y: 0 },
+                square2: Square { x: 0, y: 2 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 1, y: 0 },
+                square2: Square { x: 1, y: 2 },
+                result: true,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 2, y: 2 },
+                result: true,
+            },
+            // check if square is outside line
+            Test {
+                square: Square { x: 0, y: 5 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 0, y: 3 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 0, y: 2 },
+                square1: Square { x: 0, y: 7 },
+                square2: Square { x: 0, y: 4 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 5, y: 0 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 3, y: 0 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 2, y: 0 },
+                square1: Square { x: 7, y: 0 },
+                square2: Square { x: 4, y: 0 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 5, y: 5 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 3, y: 3 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 2, y: 2 },
+                square1: Square { x: 7, y: 7 },
+                square2: Square { x: 4, y: 4 },
+                result: false,
+            },
+            // check if square is the same as the line squares
+            Test {
+                square: Square { x: 0, y: 0 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 0, y: 4 },
+                result: false,
+            },
+            // check when square is not in line, but in between ranks/file
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 0, y: 3 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 0, y: 0 },
+                square2: Square { x: 3, y: 0 },
+                result: false,
+            },
+            Test {
+                square: Square { x: 1, y: 1 },
+                square1: Square { x: 1, y: 2 },
+                square2: Square { x: 3, y: 3 },
+                result: false,
+            },
+        ];
+        for test in tests {
+            assert_eq!(
+                test.square.is_inbetween(test.square1, test.square2),
+                test.result
+            )
+        }
     }
 }
 
@@ -104,6 +289,7 @@ impl FromWorld for SquareMaterials {
 }
 
 fn select_square(
+    mut commands: Commands,
     mouse_button_inputs: Res<Input<MouseButton>>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
@@ -124,11 +310,27 @@ fn select_square(
                 selected_square.entity = Some(square_entity);
 
                 if let Some(selected_piece_entity) = selected_piece.entity {
+                    let pieces = pieces_query.iter_mut().map(|(_, piece)| *piece).collect();
+                    let piece_entities: Vec<(Entity, Piece)> = pieces_query
+                        .iter_mut()
+                        .map(|(entity, piece)| (entity, *piece))
+                        .collect();
+
                     // Move the selected piece to the selected square
                     if let Ok((_piece_entity, mut piece)) =
                         pieces_query.get_mut(selected_piece_entity)
                     {
-                        piece.square = *square;
+                        if piece.is_valid_move(*square, pieces) {
+                            // Check if a piece of the opposite color exists in this square and despawn it
+                            for (other_entity, other_piece) in piece_entities {
+                                if other_piece.square == *square && other_piece.color != piece.color
+                                {
+                                    // Despawn piece
+                                    commands.entity(other_entity).despawn_recursive();
+                                }
+                            }
+                            piece.square = *square;
+                        }
                     }
                     selected_square.entity = None;
                     selected_piece.entity = None;
